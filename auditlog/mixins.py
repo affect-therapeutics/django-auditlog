@@ -1,5 +1,3 @@
-import json
-
 from django import urls as urlresolvers
 from django.conf import settings
 from django.urls.exceptions import NoReverseMatch
@@ -50,23 +48,20 @@ class LogEntryAdminMixin:
     def msg_short(self, obj):
         if obj.action == LogEntry.Action.DELETE:
             return ""  # delete
-        changes = json.loads(obj.changes)
-        s = "" if len(changes) == 1 else "s"
-        fields = ", ".join(changes.keys())
+        s = "" if len(obj.changes) == 1 else "s"
+        fields = ", ".join(obj.changes.keys())
         if len(fields) > MAX:
             i = fields.rfind(" ", 0, MAX)
             fields = fields[:i] + " .."
-        return "%d change%s: %s" % (len(changes), s, fields)
+        return "%d change%s: %s" % (len(obj.changes), s, fields)
 
     msg_short.short_description = "Changes"
 
     def msg(self, obj):
-        changes = json.loads(obj.changes)
-
         atom_changes = {}
         m2m_changes = {}
 
-        for field, change in changes.items():
+        for field, change in obj.changes.items():
             if isinstance(change, dict):
                 assert (
                     change["type"] == "m2m"
