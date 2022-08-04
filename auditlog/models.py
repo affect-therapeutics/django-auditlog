@@ -382,10 +382,7 @@ class LogEntry(models.Model):
         """
         :return: The changes recorded in this log entry as a dictionary object.
         """
-        try:
-            return self.changes
-        except ValueError:
-            return {}
+        return self.changes or {}
 
     @property
     def changes_str(self, colon=": ", arrow=" \u2192 ", separator="; "):
