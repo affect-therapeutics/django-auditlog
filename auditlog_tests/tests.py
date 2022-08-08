@@ -1667,3 +1667,146 @@ class TestModelSerialization(TestCase):
                 "value": 11,
             },
         )
+
+
+class TestHistoricalFieldState(TestCase):
+    def test_field_historical_state_found_successfully(self):
+        t1 = datetime.datetime(2022, 1, 1, 12, tzinfo=datetime.timezone.utc)
+        with freezegun.freeze_time(t1):
+            instance = SerializeThisModel.objects.create(
+                label="serialize me",
+                nested={"foo": "bar"},
+            )
+
+        t2 = t1 + datetime.timedelta(days=4)
+        with freezegun.freeze_time(t2):
+            instance.nullable = 10
+            instance.save()
+
+        t3 = t1 + datetime.timedelta(days=8)
+        with freezegun.freeze_time(t3):
+            instance.nullable = 20
+            instance.save()
+
+        field_history_one = instance.history.get_field_state_at_timestamp(
+            instance,
+            field_name="nullable",
+            timestamp=t1 + datetime.timedelta(days=1),
+        )
+        self.assertEqual(field_history_one.value, None)
+        self.assertEqual(field_history_one.field_found, True)
+        self.assertEqual(field_history_one.timestamp, t1)
+        self.assertEqual(field_history_one.log_entry.action, 0)
+
+        field_history_two = instance.history.get_field_state_at_timestamp(
+            instance,
+            field_name="nullable",
+            timestamp=t2 + datetime.timedelta(seconds=1),
+        )
+        self.assertEqual(field_history_two.value, 10)
+        self.assertEqual(field_history_one.field_found, True)
+        self.assertEqual(field_history_two.timestamp, t2)
+        self.assertEqual(field_history_two.log_entry.action, 1)
+
+    def test_field_history_without_log_entry(self):
+        t1 = datetime.datetime(2022, 1, 1, 12, tzinfo=datetime.timezone.utc)
+        with freezegun.freeze_time(t1):
+            instance = SerializeThisModel.objects.create(
+                label="serialize me", nested={"foo": "bar"}
+            )
+
+        field_history = instance.history.get_field_state_at_timestamp(
+            instance, field_name="nullable", timestamp=t1 - datetime.timedelta(days=1)
+        )
+        self.assertEqual(field_history.log_found, False)
+        self.assertEqual(field_history.field_found, False)
+
+    def test_field_history_without_serialized_data(self):
+        t1 = datetime.datetime(2022, 1, 1, 12, tzinfo=datetime.timezone.utc)
+        with freezegun.freeze_time(t1):
+            instance = SimpleModel.objects.create()
+
+        field_history = instance.history.get_field_state_at_timestamp(
+            instance, field_name="text", timestamp=t1 + datetime.timedelta(days=1)
+        )
+        self.assertEqual(field_history.log_found, True)
+        self.assertEqual(field_history.field_found, False)
+
+    def test_field_history_with_missing_field(self):
+        t1 = datetime.datetime(2022, 1, 1, 12, tzinfo=datetime.timezone.utc)
+        with freezegun.freeze_time(t1):
+            instance = SerializeThisModel.objects.create(
+                label="serialize me", nested={"foo": "bar"}
+            )
+
+        field_history = instance.history.get_field_state_at_timestamp(
+            instance, field_name="text", timestamp=t1 + datetime.timedelta(days=1)
+        )
+        self.assertEqual(field_history.log_found, True)
+        self.assertEqual(field_history.field_found, False)
+
+
+class TestHistoricalObjectState(TestCase):
+    def test_object_historical_state_found_successfully(self):
+        t1 = datetime.datetime(2022, 1, 1, 12, tzinfo=datetime.timezone.utc)
+        with freezegun.freeze_time(t1):
+            instance = SerializeThisModel.objects.create(
+                label="serialize me",
+                nested={"foo": "bar"},
+            )
+
+        t2 = t1 + datetime.timedelta(days=4)
+        with freezegun.freeze_time(t2):
+            instance.nullable = 10
+            instance.save()
+
+        t3 = t1 + datetime.timedelta(days=8)
+        with freezegun.freeze_time(t3):
+            instance.nullable = 20
+            instance.save()
+
+        expected_dict = {
+            "label": "serialize me",
+            "timestamp": datetime.datetime.strftime(t1, "%Y-%m-%dT%XZ"),
+            "nullable": None,
+            "nested": {"foo": "bar"},
+        }
+        object_history_one = instance.history.get_object_state_at_timestamp(
+            instance, timestamp=t1 + datetime.timedelta(days=1)
+        )
+        self.assertDictEqual(object_history_one.serialized_fields, expected_dict)
+        self.assertEqual(object_history_one.log_found, True)
+        self.assertEqual(object_history_one.timestamp, t1)
+        self.assertEqual(object_history_one.log_entry.action, 0)
+
+        object_history_two = instance.history.get_object_state_at_timestamp(
+            instance, timestamp=t2 + datetime.timedelta(seconds=1)
+        )
+        expected_dict.update({"nullable": 10})
+        self.assertDictEqual(object_history_two.serialized_fields, expected_dict)
+        self.assertEqual(object_history_two.log_found, True)
+        self.assertEqual(object_history_two.timestamp, t2)
+        self.assertEqual(object_history_two.log_entry.action, 1)
+
+    def test_field_history_without_log_entry(self):
+        t1 = datetime.datetime(2022, 1, 1, 12, tzinfo=datetime.timezone.utc)
+        with freezegun.freeze_time(t1):
+            instance = SerializeThisModel.objects.create(
+                label="serialize me", nested={"foo": "bar"}
+            )
+
+        object_history = instance.history.get_object_state_at_timestamp(
+            instance, timestamp=t1 - datetime.timedelta(days=1)
+        )
+        self.assertEqual(object_history.log_found, False)
+
+    def test_field_history_without_serialized_data(self):
+        t1 = datetime.datetime(2022, 1, 1, 12, tzinfo=datetime.timezone.utc)
+        with freezegun.freeze_time(t1):
+            instance = SimpleModel.objects.create()
+
+        object_history = instance.history.get_object_state_at_timestamp(
+            instance, timestamp=t1 + datetime.timedelta(days=1)
+        )
+        self.assertEqual(object_history.log_found, True)
+        self.assertIsNone(object_history.serialized_fields)

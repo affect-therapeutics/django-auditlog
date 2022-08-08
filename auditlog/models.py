@@ -14,8 +14,10 @@ from django.utils import formats, timezone
 from django.utils.encoding import smart_str
 from django.utils.translation import gettext_lazy as _
 
+from .history import HistoricalStateLookupManagerMixin
 
-class LogEntryManager(models.Manager):
+
+class LogEntryManager(HistoricalStateLookupManagerMixin, models.Manager):
     """
     Custom manager for the :py:class:`LogEntry` model.
     """
