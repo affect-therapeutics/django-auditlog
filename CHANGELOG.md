@@ -4,6 +4,10 @@
 
 - feat: Add `serialized_data` field on `LogEntry` model. ([412](https://github.com/jazzband/django-auditlog/pull/412))
 
+#### Breaking Changes
+
+- feat: Change `LogEntry.change` field type to `JSONField` rather than `TextField`. This change include a migration that may take time to run depending on the number of records on your `LogEntry` table ([#407](https://github.com/jazzband/django-auditlog/pull/407))
+
 #### Fixes
 
 - fix: Display `created` timestamp in server timezone ([#404](https://github.com/jazzband/django-auditlog/pull/404))
