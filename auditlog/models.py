@@ -9,9 +9,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.core import serializers
 from django.core.exceptions import FieldDoesNotExist
 from django.db import DEFAULT_DB_ALIAS, models
-from django.db.models import DateField, DateTimeField, Q, QuerySet
+from django.db.models import Q, QuerySet
 from django.utils import formats, timezone
-from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.encoding import smart_str
 from django.utils.translation import gettext_lazy as _
 
@@ -225,13 +224,8 @@ class LogEntryManager(models.Manager):
 
         for field in [x for x in instance._meta.fields if x.name in kwargs["fields"]]:
             value = getattr(instance, field.name)
-            if isinstance(value, str):
-                if isinstance(field, DateField):
-                    datestamp = parse_date(value) or value
-                    setattr(instance, field.name, datestamp)
-                elif isinstance(field, DateTimeField):
-                    timestamp = parse_datetime(value) or value
-                    setattr(instance, field.name, timestamp)
+            if not issubclass(type(value), models.Model):
+                field.to_python(value)
 
         data = json.loads(serializers.serialize("json", (instance,), **kwargs))
         return next(iter(data), None)
