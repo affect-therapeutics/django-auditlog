@@ -1571,6 +1571,7 @@ class TestModelSerialization(TestCase):
         with freezegun.freeze_time(self.test_date):
             instance = SerializeThisModel.objects.create(
                 label="test label",
+                timestamp=self.test_date,
                 nullable=4,
                 nested={"foo": True, "bar": False},
             )
@@ -1586,6 +1587,8 @@ class TestModelSerialization(TestCase):
                 "nullable": 4,
                 "nested": {"foo": True, "bar": False},
                 "mask_me": None,
+                "date": None,
+                "code": None,
             },
         )
 
@@ -1593,6 +1596,7 @@ class TestModelSerialization(TestCase):
         with freezegun.freeze_time(self.test_date):
             instance = SerializeThisModel.objects.create(
                 label="test label",
+                timestamp=self.test_date,
                 nullable=4,
                 nested={"foo": True, "bar": False},
             )
@@ -1613,6 +1617,8 @@ class TestModelSerialization(TestCase):
                 "nullable": 4,
                 "nested": {"foo": True, "bar": False},
                 "mask_me": None,
+                "date": None,
+                "code": None,
             },
         )
 
@@ -1620,6 +1626,7 @@ class TestModelSerialization(TestCase):
         with freezegun.freeze_time(self.test_date):
             instance = SerializeThisModel.objects.create(
                 label="test label",
+                timestamp=self.test_date,
                 nullable=4,
                 nested={"foo": True, "bar": False},
             )
@@ -1640,6 +1647,35 @@ class TestModelSerialization(TestCase):
                 "nullable": 4,
                 "nested": {"foo": True, "bar": False},
                 "mask_me": None,
+                "date": None,
+                "code": None,
+            },
+        )
+
+    def test_serialize_string_representations(self):
+        with freezegun.freeze_time(self.test_date):
+            instance = SerializeThisModel.objects.create(
+                label="test label",
+                nullable=4,
+                nested={"foo": 10, "bar": False},
+                timestamp="2022-03-01T12:00Z",
+                date="2022-04-05",
+                code="e82d5e53-ca80-4037-af55-b90752326460",
+            )
+
+        log = instance.history.first()
+        self.assertTrue(isinstance(log, LogEntry))
+        self.assertEqual(log.action, 0)
+        self.assertDictEqual(
+            log.serialized_data["fields"],
+            {
+                "label": "test label",
+                "timestamp": "2022-03-01T12:00:00Z",
+                "date": "2022-04-05",
+                "code": "e82d5e53-ca80-4037-af55-b90752326460",
+                "nullable": 4,
+                "nested": {"foo": 10, "bar": False},
+                "mask_me": None,
             },
         )
 
@@ -1648,6 +1684,7 @@ class TestModelSerialization(TestCase):
             instance = SerializeThisModel.objects.create(
                 label="test label",
                 nullable=4,
+                timestamp=self.test_date,
                 nested={"foo": 10, "bar": False},
                 mask_me="confidential",
             )
@@ -1663,6 +1700,8 @@ class TestModelSerialization(TestCase):
                 "nullable": 4,
                 "nested": {"foo": 10, "bar": False},
                 "mask_me": "******ential",
+                "date": None,
+                "code": None,
             },
         )
 
@@ -1686,7 +1725,9 @@ class TestModelSerialization(TestCase):
     def test_serialize_related(self):
         with freezegun.freeze_time(self.test_date):
             serialize_this = SerializeThisModel.objects.create(
-                label="test label", nested={"foo": "bar"}
+                label="test label",
+                nested={"foo": "bar"},
+                timestamp=self.test_date,
             )
             instance = SerializePrimaryKeyRelatedModel.objects.create(
                 serialize_this=serialize_this,
@@ -1709,7 +1750,9 @@ class TestModelSerialization(TestCase):
     def test_serialize_related_with_kwargs(self):
         with freezegun.freeze_time(self.test_date):
             serialize_this = SerializeThisModel.objects.create(
-                label="test label", nested={"foo": "bar"}
+                label="test label",
+                nested={"foo": "bar"},
+                timestamp=self.test_date,
             )
             instance = SerializeNaturalKeyRelatedModel.objects.create(
                 serialize_this=serialize_this,
